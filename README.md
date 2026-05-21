@@ -251,4 +251,3 @@ For Turing Machine visualizations with larger radii, use `"ArrayPlot"` instead.
 Here is a link to the official Wolfram Function Repository entry and documentation for `AdaptiveTuringMachine`:
 
 [AdaptiveTuringMachine — Wolfram Function Repository](https://resources.wolframcloud.com/FunctionRepository/resources/AdaptiveTuringMachine/)
-```
