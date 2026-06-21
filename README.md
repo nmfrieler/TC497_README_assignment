@@ -8,18 +8,26 @@
 
 The purpose of this function is to categorize the complex behaviors that arise from relatively simple rules and, in particular, to explore how similar rules can lead to very different outcomes.
 
+## Why This Code Is Valuable
+
+`AdaptiveTuringMachine` turns the manual process of testing individual Turing Machine rules into a systematic, reproducible search. By allowing users to define what counts as successful behavior, it can uncover high-performing or unexpected machines that may be difficult to find by inspection alone. This makes the function useful for studying emergent computation, comparing evolutionary strategies, and exploring how small changes to simple rules can produce dramatically different results.
+
 ---
 
 ## Table of Contents
 
 - [Quickstart Guide](#quickstart-guide)
-- [Feature List](#feature-list)
-  - [Core Options](#core-options)
-  - [Fitness Functions](#fitness-functions)
-  - [Outputs](#outputs)
-  - [State Selection](#state-selection)
 - [Architecture Diagram](#architecture-diagram)
-- [Usage Examples](#usage-examples)
+  - [High-Level Architecture Diagram](#high-level-architecture-diagram)
+  - [Low-Level Architecture Diagram](#low-level-architecture-diagram)
+- [Syntax Reference](#syntax-reference)
+  - [Call Structure](#call-structure)
+  - [Input Association](#input-association)
+  - [Fitness Functions](#fitness-functions)
+  - [State Selection](#state-selection)
+  - [Output Types](#output-types)
+  - [Additional Options](#additional-options)
+- [Examples](#examples)
   - [Example 1: Visualizing Breakthrough States](#example-1-visualizing-breakthrough-states)
   - [Example 2: Comparing Fitness Across Multiple Runs](#example-2-comparing-fitness-across-multiple-runs)
   - [Example 3: Targeting a Lifetime Value](#example-3-targeting-a-lifetime-value)
@@ -42,106 +50,145 @@ ResourceFunction["AdaptiveTuringMachine"]
 
 ---
 
-## Feature List
+## Architecture Diagram
 
-### Core Options
+### High-Level Architecture Diagram
 
-`AdaptiveTuringMachine` includes several options for configuring the adaptive evolution process:
+This diagram provides a high-level overview of how `AdaptiveTuringMachine` works.
 
-- `"InitialRule"`  
-  Allows you to specify the starting rule for the Turing Machine, as well as which Turing Machines to choose from.
+![High-Level Architecture Diagram](high_level_architecture_diagram.png)
 
-- `"InitialCondition"`  
-  Allows you to set the initial state of the tape and the head of the Turing Machine.
+### Low-Level Architecture Diagram
 
-- `"AdaptiveIterations"`  
-  Allows you to set the number of mutation steps performed.
+This diagram provides a detailed view of the internal architecture and execution flow of `AdaptiveTuringMachine`.
 
-- `"MaxSteps"`  
-  Allows you to set the step limit for detecting whether each Turing Machine has halted.
-
-- `"MutationFunction"`  
-  Allows you to specify the number and type of mutations performed per step.
-
-- `"FitnessFunction"`  
-  Allows you to choose what the adaptive evolution is trying to optimize.
+![Low-Level Architecture Diagram](low_level_architecture_diagram.png)
 
 ---
+
+## Syntax Reference
+
+### Call Structure
+
+Use `AdaptiveTuringMachine` with an association of evolution settings, followed by a state-selection argument and an output-type argument:
+
+```wolfram
+ResourceFunction["AdaptiveTuringMachine"][
+  <|inputKey1 -> value1, inputKey2 -> value2, ...|>,
+  stateSelection,
+  outputType
+]
+```
+
+Options that control reproducibility or output formatting can follow the output type:
+
+```wolfram
+ResourceFunction["AdaptiveTuringMachine"][
+  <|inputKey1 -> value1, inputKey2 -> value2, ...|>,
+  stateSelection,
+  outputType,
+  option1 -> value1,
+  ...
+]
+```
+
+### Input Association
+
+The first argument is an association containing any of the following keys:
+
+| Key | Allowable value | Purpose |
+| --- | --- | --- |
+| `"InitialRule"` | A valid Turing Machine rule, such as `{2442211145482, {3, 3, 1}}` | Sets the starting rule and Turing Machine configuration. |
+| `"InitialCondition"` | A valid initial tape and head configuration | Sets the initial tape, head position, and head state. |
+| `"AdaptiveIterations"` | A non-negative integer | Sets the number of mutation steps to attempt. |
+| `"MaxSteps"` | A positive integer | Sets the simulation limit used to determine whether a machine halts. |
+| `"MutationFunction"` | A supported mutation specification or a user-defined mutation function | Controls what is mutated and how many mutations are performed at each step. |
+| `"FitnessFunction"` | `"Lifetime"`, `"Width"`, `"AspectRatio"`, a target specification, or a user-defined function | Defines how candidate Turing Machines are evaluated. |
+| `"SelectionFunction"` | A function of the candidate and current fitness values | Determines whether a mutation is accepted. |
+
+For example:
+
+```wolfram
+<|
+  "InitialRule" -> {2442211145482, {3, 3, 1}},
+  "AdaptiveIterations" -> 1000,
+  "MaxSteps" -> 250
+|>
+```
+
+Keys that are omitted use the function's built-in defaults. See the [official WFR documentation](#link-to-wfr-documentation) for the current default values and complete forms accepted by each key.
 
 ### Fitness Functions
 
-The following built-in fitness functions are supported:
+The `"FitnessFunction"` key accepts the following built-in terms:
 
-- `"Lifetime"`  
-  Optimizes for longer halting time.
+| Value | Optimizes for |
+| --- | --- |
+| `"Lifetime"` | A longer halting time |
+| `"Width"` | A wider tape pattern |
+| `"AspectRatio"` | Lifetime divided by width |
 
-- `"Width"`  
-  Optimizes for a wider tape pattern.
+To target a specific value instead of maximizing it, map the fitness term to a numeric target:
 
-- `"AspectRatio"`  
-  Optimizes for lifetime divided by width.
+```wolfram
+"FitnessFunction" -> ("Lifetime" -> 45)
+```
 
-You can also use:
+A user-defined fitness function may also be supplied. It must accept the Turing Machine rule and initial condition as its arguments and return a numerical fitness value:
 
-- `"FitnessFunction" -> target`  
-  Sets the adaptive evolution to target a particular value for any of the fitness functions.
-
-- A user-specified function  
-  The custom function should take the rule and initial condition as input.
-
----
-
-### Outputs
-
-The function supports several output types:
-
-- `"BestRule"`  
-  Gives the highest-fitness rule found.
-
-- `"BestFitness"`  
-  Gives the highest numerical fitness value found.
-
-- `"Fitness"`  
-  Gives the fitness value at each step of the adaptive evolution.
-
-- `"Lifetime"`  
-  Gives the number of steps before halting for each step of the adaptive evolution.
-
-- `"Width"`  
-  Gives the width of the tape pattern for each step of the adaptive evolution.
-
-- `"RulePlot"`  
-  Gives a 2D visualization of the tape pattern for each step of the adaptive evolution, including the location and state of the Turing Machine head.
-
-- `"ArrayPlot"`  
-  Gives a 2D visualization of the tape pattern without visualizing the Turing Machine head.
-
----
+```wolfram
+"FitnessFunction" -> Function[rule, initialCondition]
+```
 
 ### State Selection
 
-For the outputs above, you can also specify which states are selected:
+The second positional argument selects which adaptive-evolution states are returned:
 
-- `"All"`  
-  Gives all steps of the adaptive evolution.
+| Value | States returned |
+| --- | --- |
+| `All` | Every step of the adaptive evolution |
+| `"FinalState"` | Only the final state |
+| `"BreakthroughStates"` | States that achieve a new highest-so-far fitness |
 
-- `"FinalState"`  
-  Gives the last step of the adaptive evolution.
+### Output Types
 
-- `"BreakthroughStates"`  
-  Gives the steps of the adaptive evolution that achieve a highest-so-far fitness value.
+The third positional argument controls the returned data or visualization:
+
+| Value | Output |
+| --- | --- |
+| `"BestRule"` | The highest-fitness rule found |
+| `"BestFitness"` | The highest numerical fitness found |
+| `"Fitness"` | The fitness value for each selected state |
+| `"Lifetime"` | The number of steps before halting for each selected state |
+| `"Width"` | The tape-pattern width for each selected state |
+| `"RulePlot"` | A 2D tape visualization that includes the head location and state |
+| `"ArrayPlot"` | A 2D tape visualization without the Turing Machine head |
+
+For example, the following positional arguments return a `RulePlot` for each breakthrough state:
+
+```wolfram
+"BreakthroughStates",
+"RulePlot"
+```
+
+### Additional Options
+
+Options can be placed after the output-type argument:
+
+| Option | Allowable value | Purpose |
+| --- | --- | --- |
+| `RandomSeeding` | An integer seed | Makes randomized adaptive evolutions reproducible. |
+| `PlotLabels` | An output property such as `"Lifetime"` | Labels generated plots with the selected property. |
+
+Plot-related options are relevant when using `"RulePlot"` or `"ArrayPlot"` output.
+
+### Warning
+
+The underlying Wolfram Language `RulePlot` function only supports Turing Machine offsets from `-1` through `1`; use `"ArrayPlot"` for machines with a larger radius.
 
 ---
 
-## Architecture Diagram
-
-Here is a high-level overview of how `AdaptiveTuringMachine` works:
-
-![Architecture Diagram](architecture_diagram.png)
-
----
-
-## Usage Examples
+## Examples
 
 ### Example 1: Visualizing Breakthrough States
 
@@ -160,6 +207,15 @@ ResourceFunction["AdaptiveTuringMachine"][
 ```
 
 ![Example 1 Output](example1.png)
+
+#### How to Read the Output
+
+- Each figure in the list represents a **breakthrough state**: an adaptive-evolution step that achieved a new highest-so-far fitness, which is measured by the lifetime of the Turing Machine.
+- The panels appear chronologically and omit iterations that did not set a new record.
+- Within each `RulePlot`, read downward to follow the Turing Machine through time and horizontally to follow positions on the tape.
+- Cell colors represent symbols on the tape.
+- The highlighted head marker shows the head's position.
+- The orientation of the head marker shows the head's state.
 
 ---
 
@@ -187,6 +243,12 @@ ListStepPlot[
 
 ![Example 2 Output](example2.png)
 
+#### How to Read the Output
+
+- Each staircase line represents one of the 10 independent adaptive evolutions.
+- The horizontal axis is the adaptive iteration number, from the initial state through iteration 1000. The vertical axis is the best fitness found so far in that run.
+- Horizontal plateaus indicate no improvement in best fitness. An upward jump marks a breakthrough that established a new best fitness.
+
 ---
 
 ### Example 3: Targeting a Lifetime Value
@@ -209,6 +271,13 @@ ResourceFunction["AdaptiveTuringMachine"][
 ```
 
 ![Example 3 Output](example3.gif)
+
+#### How to Read the Output
+
+- Each diagram in this example can be read in the same way as the diagrams in [Example 1](#example-1-visualizing-breakthrough-states).
+- The plot label reports the displayed machine's lifetime. Here, improvement means moving closer to the target value of 45, rather than simply producing the longest possible lifetime.
+- The lifetime does not necessarily need to increase at every breakthrough; it needs to become closer to 45.
+- A displayed lifetime of 45 means the target has been reached. `MaxSteps -> 250` is the simulation cutoff used when testing whether each candidate halts.
 
 ---
 
